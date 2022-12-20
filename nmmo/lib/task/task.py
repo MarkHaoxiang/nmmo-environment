@@ -1,26 +1,30 @@
-import numpy as np
 from typing import Dict, List
-import json
+from abc import ABC, abstractmethod
 import random
 
 from nmmo.lib.task.proposition import *
 from nmmo.lib.task.variable import *
 
-# An abstraction layer above proposition
-class Task(Proposition, ABC):
+# An abstraction layer above task
+class CombinationTask(Task, ABC):
+  def __init__(self, *params):
+    self._params = list(params[1:])
+
   def evaluate(self, realm, entity) -> bool:
-    return self._proposition.evaluate(realm,entity)
+    return self._task.evaluate(realm,entity)
 
   def description(self) -> List:
-    return self.__class__.__name__ + self._params
+    return [self.__class__.__name__] + list(map(str,self._params))
 
-class Attack(Task):
+class Attack(CombinationTask):
   def __init__(self, target: VariableTarget, damage_type: int, quantity: int) -> None:
-    self._proposition = GEQ(InflictDamage(target,damage_type),quantity)
+    super().__init__(self,target,damage_type,quantity)
+    self._task = GEQ(InflictDamage(target,damage_type),quantity)
 
-class Defend(Task):
+class Defend(CombinationTask):
   def __init__(self, target: VariableTarget, num_steps: int) -> None:
-    self._proposition = AND(GEQ(Tick,Constant(num_steps)),GEQ(Alive(target),len(target.agents)))
+    super().__init__(self,target,num_steps)
+    self._task = AND(GEQ(Tick,Constant(num_steps)),GEQ(Alive(target),Constant(len(target.agents()))))
 
 ###############################################################
 
@@ -66,7 +70,7 @@ class TaskSampler:
              max_clauses: int = 1,
              min_clause_size: int = 1,
              max_clause_size: int = 1,
-             not_p: float = 0.0) -> Proposition:
+             not_p: float = 0.0) -> Task:
     
     clauses = []
     for c in range(0, random.randint(min_clauses, max_clauses)):

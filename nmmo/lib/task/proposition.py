@@ -5,11 +5,11 @@ import json
 '''
 TODO(mark) optimization
 
-1. check whether a proposition can change during an episode by adding limit identifiers to variables
+1. check whether a task can change during an episode by adding limit identifiers to variables
 2. the current method of obtaining a description through list addition is inefficient
 '''
 
-class Proposition(ABC):
+class Task(ABC):
     '''
     Evaluates a state to a condition
     '''
@@ -25,44 +25,44 @@ class Proposition(ABC):
 
 ###############################################################
 
-class AND(Proposition):
-  def __init__(self, *propositions: Proposition) -> None:
+class AND(Task):
+  def __init__(self, *tasks: Task) -> None:
     super().__init__()
-    assert len(propositions)
-    self._propositions = propositions
+    assert len(tasks)
+    self._tasks = tasks
 
   def evaluate(self, realm, entity) -> bool:
-    return all([t.evaluate(realm, entity) for t in self._propositions])
+    return all([t.evaluate(realm, entity) for t in self._tasks])
 
   def description(self) -> List:
-    return ["AND"] + [t.description() for t in self._propositions]
+    return ["AND"] + [t.description() for t in self._tasks]
 
-class OR(Proposition):
-  def __init__(self, *propositions: Proposition) -> None:
+class OR(Task):
+  def __init__(self, *tasks: Task) -> None:
     super().__init__()
-    assert len(propositions)
-    self._propositions = propositions
+    assert len(tasks)
+    self._tasks = tasks
 
   def evaluate(self, realm, entity) -> bool:
-    return any([t.evaluate(realm, entity) for t in self._propositions])
+    return any([t.evaluate(realm, entity) for t in self._tasks])
 
   def description(self) -> List:
-    return ["OR"] + [t.description() for t in self._propositions]
+    return ["OR"] + [t.description() for t in self._tasks]
 
-class NOT(Proposition):
-  def __init__(self, proposition: Proposition) -> None:
+class NOT(Task):
+  def __init__(self, task: Task) -> None:
     super().__init__()
-    self._proposition = proposition
+    self._task = task
 
   def evaluate(self, realm, entity) -> bool:
-    return not self._proposition.evaluate(realm, entity)
+    return not self._task.evaluate(realm, entity)
 
   def description(self) -> List:
-    return ["NOT"] +  [self._proposition.description()] 
+    return ["NOT"] +  [self._task.description()] 
 
 ###############################################################
 
-class GEQ(Proposition):
+class GEQ(Task):
     def __init__(self, lhs ,rhs) -> None:
        super().__init__()
        self._lhs, self._rhs = lhs, rhs

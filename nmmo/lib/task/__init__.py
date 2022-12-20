@@ -1,1 +1,1 @@
-from task import *
+from nmmo.lib.task.task import *

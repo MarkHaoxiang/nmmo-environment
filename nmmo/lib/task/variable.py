@@ -31,12 +31,12 @@ class Constant(Variable):
 
 ###############################################################
 
-class VariableTarget(object):
+class VariableTarget:
     def __init__(self, name: str, agents: List[str]) -> None:
         self._name = name
         self._agents = agents
 
-    def agents(self) ->  List[int]:
+    def agents(self) ->  List[str]:
         return self._agents
 
     def description(self) -> List:
@@ -46,13 +46,16 @@ class VariableTarget(object):
         assert member < len(self._agents)
         return VariableTarget(f"{self.description()}.{member}", [self._agents[member]])
 
+    def __str__(self):
+        return self.description()
+
 class TargetVariable(Variable, ABC):
     def __init__(self, target: VariableTarget) -> None:
         self._target = target
 
     def description(self) -> List:
         return [super().description(), self._target.description()]
-
+        
     @abstractmethod
     def value(self, realm, entity) -> bool:
         raise NotImplementedError
@@ -89,25 +92,26 @@ class InflictDamage(TargetVariable):
     def value(self, realm, entity) -> int:
         # TODO(daveey) damage_type is ignored, needs to be added to entity.history
         return sum([
-            realm.players[a].history.damage_inflicted for a in self._target.agents()
+            realm.entity(a).history.damage_inflicted for a in self._target.agents()
         ])
 
     def description(self) -> List:
-        return ['Damage'] + super().description() + [self._damage_type]
+        return super().description() + [self._damage_type]
 
 class Alive(TargetVariable):
     def __init__(self, target: VariableTarget):
         super().__init__(target)
     
     def value(self, realm, entity) -> int:
-        return sum([realm.players[a].alive for a in self._target.agents()])
-
-    def description(self) -> List:
-        return ['Alive'] + super().description()
+        return sum([realm.entity(a).alive for a in self._target.agents()])
 
 class Health(TargetVariable):
-    pass
-
+    def __init__(self,target: VariableTarget):
+        super().__init__(target)
+    
+    def value(self, realm, entity):
+        return sum([realm.entity(a).resources.health.val for a in self._target.agents()])
+        
 class Gold(TargetVariable):
     pass
 

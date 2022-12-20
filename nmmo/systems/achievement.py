@@ -18,7 +18,7 @@ class Achievement:
       if self.completed:
          return 0
 
-      if self.task.completed(realm, entity):
+      if self.task.evaluate(realm, entity):
          self.completed = True
          return self.reward
 
