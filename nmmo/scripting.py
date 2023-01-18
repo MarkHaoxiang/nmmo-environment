@@ -1,4 +1,5 @@
 from pdb import set_trace as T
+import numpy as np
 
 class Observation:
    '''Unwraps observation tensors for use with scripted agents'''
@@ -12,18 +13,21 @@ class Observation:
       self.obs    = obs
       self.delta  = config.PLAYER_VISION_RADIUS
       self.tiles  = self.obs['Tile']['Continuous']
+      self.agents = self.obs['Entity']['Continuous']
 
-      n = int(self.obs['Entity']['N'])
-      self.agents  = self.obs['Entity']['Continuous'][:n]
-      self.n = n
+      agents = self.obs['Entity']
+      self.agents = agents['Continuous'][agents['Mask']]
+      self.agent_mask_map = np.where(agents['Mask'])[0]
 
       if config.ITEM_SYSTEM_ENABLED:
-          n = int(self.obs['Item']['N'])
-          self.items   = self.obs['Item']['Continuous'][:n]
+          items = self.obs['Item']
+          self.items = items['Continuous'][items['Mask']]
+          self.items_mask_map = np.where(items['Mask'])[0]
 
       if config.EXCHANGE_SYSTEM_ENABLED:
-          n = int(self.obs['Market']['N'])
-          self.market = self.obs['Market']['Continuous'][:n]
+          market = self.obs['Market']
+          self.market = market['Continuous'][market['Mask']]
+          self.market_mask_map = np.where(market['Mask'])[0]
 
    def tile(self, rDelta, cDelta):
       '''Return the array object corresponding to a nearby tile
@@ -35,12 +39,13 @@ class Observation:
       Returns:
          Vector corresponding to the specified tile
       '''
-      return self.tiles[self.config.PLAYER_VISION_DIAMETER * (self.delta + rDelta) + self.delta + cDelta]
+      return self.tiles[self.config.PLAYER_VISION_DIAMETER * (self.delta + cDelta) + self.delta + rDelta]
 
    @property
    def agent(self):
       '''Return the array object corresponding to the current agent'''
-      return self.agents[0]
+      curr_idx = (self.config.PLAYER_VISION_DIAMETER + 1) * self.delta
+      return self.obs['Entity']['Continuous'][curr_idx]
 
    @staticmethod
    def attribute(ary, attr):
