@@ -12,10 +12,10 @@ class Failure(task.Task):
   def evaluate(self, realm: Realm, entity: Entity) -> bool:
     return False
   
-class TestTask(task.CombinationTask):
-  def __init__(self, target: task.VariableTarget, param1: int, param2: float) -> None:
-    super().__init__(self,target,param1,param2)
-    self._task = task.GEQ(task.InflictDamage(target,param1),param2)
+class TestTask(task.Task):
+  def __init__(self, target: task.EntityTarget, param1: int, param2: float) -> None:
+    super().__init__()
+    self._task = task.InflictDamage(target,param1) > param2
     self._param1 = param1
     self._param2 = param2
 
@@ -40,12 +40,20 @@ class TestTasks(unittest.TestCase):
       self.assertTrue(task.OR(Success(), Failure(), Success()).evaluate(realm, entity))
       self.assertTrue(task.AND(Success(), task.NOT(Failure()), Success()).evaluate(realm, entity))
 
+    def test_overload(self):
+      self.assertAlmostEqual((task.Constant(5)+6.5).value(realm,entity),11.5)
+      self.assertAlmostEqual((task.Constant(8)-2).value(realm,entity),6)
+      self.assertTrue((task.Constant(5)>task.Constant(4)).evaluate(realm,entity))
+      self.assertFalse((~(task.Constant(5)>task.Constant(4))).evaluate(realm,entity))
+      team_helper = task.TeamHelper(range(1, 101), 5)
+      task.Defend(team_helper.own_team(17),50)
+
     def test_descriptions(self):
       self.assertEqual(
         task.AND(Success(), 
         task.NOT(task.OR(Success(), 
-                         TestTask(task.VariableTarget("t1", []), 123, 3.45)))).description(),
-        ['AND', 'Success', ['NOT', ['OR', 'Success', ['TestTask', 't1', '123', '3.45']]]]
+                         TestTask(task.EntityTarget("t1", []), 123, 3.45)))).description(),
+        ['AND', 'Success', ['NOT', ['OR', 'Success', 'TestTask']]]
       )
 
     def test_team_helper(self):
@@ -63,7 +71,7 @@ class TestTasks(unittest.TestCase):
       self.assertSequenceEqual(team_helper.all().agents(), range(1, 101))
 
     def test_task_target(self):
-      tt = task.VariableTarget("Foo", [1, 2, 8, 9])
+      tt = task.EntityTarget("Foo", [1, 2, 8, 9])
 
       self.assertEqual(tt.member(2).description(), "Foo.2")
       self.assertEqual(tt.member(2).agents(), [8])
@@ -74,7 +82,7 @@ class TestTasks(unittest.TestCase):
       sampler.add_task_spec(Success)
       sampler.add_task_spec(Failure)
       sampler.add_task_spec(TestTask, [
-        [task.VariableTarget("t1", []), task.VariableTarget("t2", [])],
+        [task.EntityTarget("t1", []), task.EntityTarget("t2", [])],
         [1, 5, 10],
         [0.1, 0.2, 0.3, 0.4]
       ])

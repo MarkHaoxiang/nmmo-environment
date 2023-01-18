@@ -3,25 +3,50 @@ from typing import List
 import json
 
 '''
+Link up the abstract syntax tree.
+
+
 TODO(mark) optimization
 
 1. check whether a task can change during an episode by adding limit identifiers to variables
-2. the current method of obtaining a description through list addition is inefficient
+2. type checker for the task ast
+3. equivalence?
 '''
 
 class Task(ABC):
+  '''
+  A task expression a mapping from game states to logic truth. 
+  Representation is through an abstract language described below.
+
+  There are two types: Task and Value.
+
+    Task:
+      A boolean expression evaluated from values. 
+      Each subclass of Task represents a semantic expression  - either a logical connective between Task or an comparison on Value.
+
+    Value:
+      Numeric data obtained from the game state, or an operator combining values.
+  '''
+
+  @abstractmethod
+  def evaluate(self, realm, entity) -> bool:
     '''
     Evaluates a state to a condition
     '''
-    @abstractmethod
-    def evaluate(self, realm, entity) -> bool:
-      raise NotImplementedError
+    raise NotImplementedError
 
-    def description(self) -> List:
-      return self.__class__.__name__
+  def description(self) -> List:
+    return self.__class__.__name__
 
-    def to_string(self) -> str:
-      return json.dumps(self.description())
+  def to_string(self) -> str:
+    return json.dumps(self.description())
+
+  def __and__(self, other):
+    return AND(self,other)
+  def __or__(self, other):
+    return OR(self,other)
+  def __invert__(self):
+    return NOT(self)
 
 ###############################################################
 
@@ -61,14 +86,73 @@ class NOT(Task):
     return ["NOT"] +  [self._task.description()] 
 
 ###############################################################
+# Comparison
 
-class GEQ(Task):
-    def __init__(self, lhs ,rhs) -> None:
-       super().__init__()
-       self._lhs, self._rhs = lhs, rhs
+class Comparison(Task):
+  def __init__(self, lhs, rhs):
+    super().__init__()
+    self._lhs, self._rhs = lhs,rhs
 
-    def evaluate(self, realm, entity) -> bool:
-       return self._lhs.value(realm,entity) >= self._rhs.value(realm,entity)
+class LT(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+    super().__init__(lhs,rhs)
 
-    def description(self) -> List:
-       return ['GEQ'] + self._lhs.description() + self._rhs.description()
+  def evaluate(self, realm, entity) -> bool:
+    return self._lhs.value(realm,entity) < self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+    return ['Less than'] + self._lhs.description() + self._rhs.description()
+
+class LE(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+    super().__init__(lhs,rhs)
+
+  def evaluate(self, realm, entity) -> bool:
+    return self._lhs.value(realm,entity) <= self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+    return ['Less than or equal'] + self._lhs.description() + self._rhs.description()
+
+class EQ(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+    super().__init__(lhs,rhs)
+
+  def evaluate(self, realm, entity) -> bool:
+    return self._lhs.value(realm,entity) == self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+    return ['Equal'] + self._lhs.description() + self._rhs.description()
+
+class NE(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+    super().__init__(lhs,rhs)
+
+  def evaluate(self, realm, entity) -> bool:
+    return self._lhs.value(realm,entity) != self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+    return ['Not equal'] + self._lhs.description() + self._rhs.description()
+
+class GT(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+    super().__init__(lhs,rhs)
+
+  def evaluate(self, realm, entity) -> bool:
+    return self._lhs.value(realm,entity) > self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+    return ['Greater'] + self._lhs.description() + self._rhs.description()
+  
+
+class GE(Comparison):
+  def __init__(self, lhs ,rhs) -> None:
+      super().__init__(lhs,rhs)
+
+  def evaluate(self, realm, entity) -> bool:
+      return self._lhs.value(realm,entity) >= self._rhs.value(realm,entity)
+
+  def description(self) -> List:
+      return ['Greater than or equal'] + self._lhs.description() + self._rhs.description()
+
+
+  

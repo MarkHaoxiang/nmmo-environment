@@ -1,32 +1,45 @@
 from typing import Dict, List
-from abc import ABC, abstractmethod
-import random
 
 from nmmo.lib.task.proposition import *
-from nmmo.lib.task.variable import *
+from nmmo.lib.task.value import *
 
-# An abstraction layer above task
-class CombinationTask(Task, ABC):
-  def __init__(self, *params):
-    self._params = list(params[1:])
+'''
+Contains a set of standard baselines
+'''
+
+class Attack(Task):
+  def __init__(self, target: EntityTarget, damage_type: int, quantity: int) -> None:
+    super().__init__()
+    self._task = InflictDamage(target,damage_type) > quantity
+    self._target = target
+    self._damage_type = damage_type
+    self._quantity = quantity
 
   def evaluate(self, realm, entity) -> bool:
     return self._task.evaluate(realm,entity)
 
   def description(self) -> List:
-    return [self.__class__.__name__] + list(map(str,self._params))
+    return ["Attack"] + self._target.description() + [str(self._damage_type), str(self._quantity)]
 
-class Attack(CombinationTask):
-  def __init__(self, target: VariableTarget, damage_type: int, quantity: int) -> None:
-    super().__init__(self,target,damage_type,quantity)
-    self._task = GEQ(InflictDamage(target,damage_type),quantity)
 
-class Defend(CombinationTask):
-  def __init__(self, target: VariableTarget, num_steps: int) -> None:
-    super().__init__(self,target,num_steps)
-    self._task = AND(GEQ(Tick,Constant(num_steps)),GEQ(Alive(target),Constant(len(target.agents()))))
+class Defend(Task):
+  def __init__(self, target: EntityTarget, num_steps: int) -> None:
+    super().__init__()
+    self._task = (num_steps < Tick()) & (Alive(target) < len(target.agents()))
+    self._num_steps = num_steps
+    self._target = target
 
-###############################################################
+  def evaluate(self, realm, entity) -> bool:
+    return self._task.evaluate(realm,entity)
+
+  def description(self) -> List:
+    return ["Defend"] + self._target.description() + ['for', str(self._num_steps)]
+
+
+################################################
+#TODO(mark) move this out of tasks. define standard API for samplers
+import random
+from typing import Dict, List
 
 class TeamHelper:
   def __init__(self, agents: List[int], num_teams: int) -> None:
@@ -38,23 +51,22 @@ class TeamHelper:
     ]
     self._agent_to_team = {a: tid for tid, t in enumerate(self._teams) for a in t}
 
-  def own_team(self, agent_id: int) -> VariableTarget:
-    return VariableTarget("Team.Self", self._teams[self._agent_to_team[agent_id]])
+  def own_team(self, agent_id: int) -> EntityTarget:
+    return EntityTarget("Team.Self", self._teams[self._agent_to_team[agent_id]])
 
-  def left_team(self, agent_id: int) -> VariableTarget:
-    return VariableTarget("Team.Left", self._teams[
+  def left_team(self, agent_id: int) -> EntityTarget:
+    return EntityTarget("Team.Left", self._teams[
       (self._agent_to_team[agent_id] -1) % len(self._teams)
     ])
 
-  def right_team(self, agent_id: int) -> VariableTarget:
-    return VariableTarget("Team.Right", self._teams[
+  def right_team(self, agent_id: int) -> EntityTarget:
+    return EntityTarget("Team.Right", self._teams[
       (self._agent_to_team[agent_id] + 1) % len(self._teams)
     ])
 
-  def all(self) -> VariableTarget:
-    return VariableTarget("All", list(self._agent_to_team.keys()))
+  def all(self) -> EntityTarget:
+    return EntityTarget("All", list(self._agent_to_team.keys()))
 
-###############################################################
 
 class TaskSampler:
   def __init__(self) -> None:
