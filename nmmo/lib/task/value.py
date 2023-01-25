@@ -133,6 +133,18 @@ class Product(GameStateVariable):
     def description(self) -> List:
         return ["x"] + [op.description() for op in self._operands]
 
+class Modulus(GameStateVariable):
+    def __init__(self, a: GameStateVariable, b: GameStateVariable):
+        super().__init__()
+        self._a = a
+        self._b = b
+    
+    def value(self, realm, entity):
+        return self._a.value(realm, entity) % self._a.value(realm, entity)
+
+    def description(self) -> List:
+        return ["%"] + [self._a.description(), self._b.description()]
+
 class Max(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()

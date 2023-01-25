@@ -10,7 +10,7 @@ TODO(mark) optimization
 
 1. check whether a task can change during an episode by adding limit identifiers to variables
 2. type checker for the task ast
-3. equivalence?
+3. equivalence
 '''
 
 class Task(ABC):
@@ -24,7 +24,7 @@ class Task(ABC):
       A boolean expression evaluated from values. 
       Each subclass of Task represents a semantic expression  - either a logical connective between Task or an comparison on GameStateVariable.
 
-    GameStateVariable: #TODO maybe rename to avoid conflict with RL term
+    GameStateVariable: 
       Numeric data obtained from the game state, or an operator combining values.
   '''
 
@@ -49,6 +49,20 @@ class Task(ABC):
     return NOT(self)
 
 ###############################################################
+
+class TRUE(Task):
+  def evaluate(self, realm, entity) -> bool:
+    return True
+  
+  def description(self) -> List:
+    return ['SUCCESS']
+
+class FALSE(Task):
+  def evaluate(self, realm, entity) -> bool:
+    return True
+  
+  def description(self) -> List:
+    return ['FAILURE']
 
 class AND(Task):
   def __init__(self, *tasks: Task) -> None:
@@ -84,6 +98,20 @@ class NOT(Task):
 
   def description(self) -> List:
     return ["NOT"] +  [self._task.description()] 
+
+class IMPLY(Task):
+  def __init__(self, p: Task, q: Task) -> None:
+    super().__init__()
+    self._p = p
+    self._q = q
+  
+  def evaluate(self, realm, entity) -> bool:
+    if self._p.evaluate(realm, entity) and not self._q.evaluate(realm, entity): 
+      return False
+    return True
+  
+  def description(self) -> List:
+    return ["IF"] + [self._p.description()] + ["THEN"] + [self._q.description()]
 
 ###############################################################
 # Comparison
