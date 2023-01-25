@@ -18,13 +18,13 @@ class Task(ABC):
   A task expression a mapping from game states to logic truth. 
   Representation is through an abstract language described below.
 
-  There are two types: Task and Value.
+  There are two types: Task and GameStateVariable.
 
     Task:
       A boolean expression evaluated from values. 
-      Each subclass of Task represents a semantic expression  - either a logical connective between Task or an comparison on Value.
+      Each subclass of Task represents a semantic expression  - either a logical connective between Task or an comparison on GameStateVariable.
 
-    Value:
+    GameStateVariable: #TODO maybe rename to avoid conflict with RL term
       Numeric data obtained from the game state, or an operator combining values.
   '''
 

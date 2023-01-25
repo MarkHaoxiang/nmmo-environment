@@ -3,14 +3,14 @@ from typing import Dict, List
 from math import prod
 from nmmo.lib.task.proposition import *
 
-def implicitConstantDecorator(function):
+def ImplicitConstantDecorator(function):
     def wrapper(self,other):
-        if (not isinstance(other,Value)):
+        if (not isinstance(other,GameStateVariable)):
             other = Constant(other)
         return function(self,other)
     return wrapper
 
-class Value(ABC):
+class GameStateVariable(ABC):
     '''
     Access a desired attribute concerning game state
     '''
@@ -21,52 +21,52 @@ class Value(ABC):
     def description(self) -> List:
         return self.__class__.__name__
 
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __lt__(self, other):
         return LT(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __le__(self, other):
         return LE(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __eq__(self, other):
         return EQ(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __ne__(self, other):
         return NE(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __gt__(self, other):
         return GT(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __ge__(self, other):
         return GE(self,other)
     
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __add__(self,other):
         return Sum(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __radd__(self,other):
         return Sum(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __mul__(self,other):
         return Product(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __rmul__(self,other):
         return Product(self,other)
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __sub__(self,other):
         return Sum(self, Product(other,Constant(-1)))
-    @implicitConstantDecorator
+    @ImplicitConstantDecorator
     def __rsub__(self,other):
         return Sum(other, Product(self,Constant-1))
 
 
 ###############################################################
 
-class Tick(Value):
+class Tick(GameStateVariable):
     def value(self, realm, entity):
         return realm.tick
 
-class Constant(Value):
+class Constant(GameStateVariable):
     def __init__(self, value: float) -> None:
         super().__init__()
         self._value = value
@@ -98,7 +98,7 @@ class EntityTarget:
     def __str__(self):
         return self.description()
 
-class TargetValue(Value, ABC):
+class TargetGameStateVariable(GameStateVariable, ABC):
     def __init__(self, target: EntityTarget) -> None:
         self._target = target
 
@@ -111,7 +111,7 @@ class TargetValue(Value, ABC):
 
 ###############################################################
     
-class Sum(Value):
+class Sum(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()
         self._operands = operands
@@ -122,7 +122,7 @@ class Sum(Value):
     def description(self) -> List:
         return ["+"] + [op.description() for op in self._operands]
 
-class Product(Value):
+class Product(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()
         self._operands = operands
@@ -133,7 +133,7 @@ class Product(Value):
     def description(self) -> List:
         return ["x"] + [op.description() for op in self._operands]
 
-class Max(Value):
+class Max(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()
         self._operands = operands
@@ -144,7 +144,7 @@ class Max(Value):
     def description(self) -> List:
         return ["max"] + [op.description() for op in self._operands]
 
-class Min(Value):
+class Min(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()
         self._operands = operands
@@ -157,29 +157,28 @@ class Min(Value):
 
 ###############################################################
 
-class Alive(TargetValue):
+class Alive(TargetGameStateVariable):
     def __init__(self, target: EntityTarget):
         super().__init__(target)
     
     def value(self, realm, entity) -> int:
         return sum([realm.entity(a).alive for a in self._target.agents()])
 
-class Health(TargetValue):
+class Health(TargetGameStateVariable):
     def __init__(self,target: EntityTarget):
         super().__init__(target)
     
     def value(self, realm, entity):
         return sum([realm.entity(a).resources.health.val for a in self._target.agents()])
         
-class Gold(TargetValue):
+class Gold(TargetGameStateVariable):
     def __init__(self,target: EntityTarget):
         super().__init__(target)
     
     def value(self, realm, entity):
         return sum([realm.entity(a).inventory.gold.quantity.val for a in self._target.agents()])
         
-
-class Group(TargetValue):
+class Group(TargetGameStateVariable):
     '''
     Maximum group size within a bounding box of (distance x distance)
     '''
@@ -193,7 +192,7 @@ class Group(TargetValue):
         res = 1
         for i,a in enumerate(positions):
             temp = 1
-            for j in range(i,len(positions)):
+            for j in range(i+1,len(positions)):
                 b = positions[j]
                 if a[0] + self.distance <= b[0]:
                     break
@@ -203,7 +202,7 @@ class Group(TargetValue):
         return res
 
 from nmmo.systems.skill import Mage, Range, Melee, Fishing, Herbalism, Prospecting, Carving, Alchemy
-class SkillLevel(TargetValue, ABC):
+class SkillLevel(TargetGameStateVariable, ABC):
     def __init__(self, target: EntityTarget, skill):
         super().__init__(target)
         self.skill = skill
@@ -225,7 +224,7 @@ class SkillLevel(TargetValue, ABC):
 
 # TODO(mark): Implementation of below incomplete
 
-class Harvest(TargetValue):
+class Resource(TargetGameStateVariable):
     '''
     target: The team that is completing the task. Any agent may complete
     resource: lib.material to harvest
@@ -240,7 +239,7 @@ class Harvest(TargetValue):
         # TODO(mark) need to add into entity.history 
         raise NotImplementedError
 
-class InflictDamage(TargetValue):
+class InflictDamage(TargetGameStateVariable):
     def __init__(self, target: EntityTarget, damage_type: int):
         super().__init__(target)
         self._damage_type = damage_type
@@ -254,7 +253,7 @@ class InflictDamage(TargetValue):
     def description(self) -> List:
         return super().description() + [self._damage_type]
 
-class EquipLevel(TargetValue):
+class EquipLevel(TargetGameStateVariable):
     '''
     Returns maximum level of 'equipment' equipped on target, default 0
     '''

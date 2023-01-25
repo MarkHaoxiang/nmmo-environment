@@ -77,7 +77,7 @@ class TestTasks(unittest.TestCase):
       self.assertEqual(tt.member(2).agents(), [8])
 
     def test_sample(self):
-      sampler = task.TaskSampler()
+      sampler = task.DefaultTaskSampler()
 
       sampler.add_task_spec(Success)
       sampler.add_task_spec(Failure)
@@ -91,7 +91,7 @@ class TestTasks(unittest.TestCase):
 
     def test_default_sampler(self):
       team_helper = task.TeamHelper(range(1, 101), 5)
-      sampler = task.TaskSampler.create_default_task_sampler(team_helper, 10)
+      sampler = task.DefaultTaskSampler.create(team_helper, 10)
 
       sampler.sample(max_clauses=5, max_clause_size=5, not_p=0.5)
 
