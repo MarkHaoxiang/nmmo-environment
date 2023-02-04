@@ -62,6 +62,7 @@ class GameStateVariable(ABC):
 
 ###############################################################
 
+# TODO(mark) is this really needed?
 class Tick(GameStateVariable):
     def value(self, realm, entity):
         return realm.tick
@@ -73,10 +74,52 @@ class Constant(GameStateVariable):
 
     def value(self, realm, entity):
         return self._value
+class Apply(GameStateVariable):
 
-    def description(self) -> List:
-        return [self._value]
+    def __init__(self, fn, *operands) -> None:
+        super().__init__()
+        self._fn = fn
+        self._operands = operands
 
+    def value(self, realm, entity):
+        result = self._fn(*[x.value(realm,entity) for x in self._operands])
+        assert isinstance(result,float)
+        return result
+
+###############################################################
+
+#TODO(mark) Discuss - is evaluate/value guaranteed to be called each turn
+class StatefulVariable(GameStateVariable, ABC):
+    def __init__(self):
+        self.reset()
+
+    @abstractmethod
+    def reset(self):
+        raise NotImplementedError
+
+class RunningTotal(StatefulVariable):
+    def __init__(self,operand):
+        super().__init()
+        self._operand = operand
+
+    def reset(self):
+        self._running_total = 0
+
+    def value(self, realm, entity):
+        self._running_total += self._operand.value(realm, entity)
+        return self._running_total
+
+class PreviousValue(StatefulVariable):
+    def __init__(self, operand):
+        super().__init()
+        self._operand = operand
+    
+    def reset(self):
+        self._v = 0
+    
+    def value(self, realm, entity):
+        self._v = self._operand.value(realm, entity)
+        return self._v
 
 ###############################################################
 
@@ -101,9 +144,6 @@ class EntityTarget:
 class TargetGameStateVariable(GameStateVariable, ABC):
     def __init__(self, target: EntityTarget) -> None:
         self._target = target
-
-    def description(self) -> List:
-        return [super().description(), self._target.description()]
         
     @abstractmethod
     def value(self, realm, entity) -> bool:
@@ -118,9 +158,6 @@ class Sum(GameStateVariable):
     
     def value(self, realm, entity):
         return sum([op.value(realm, entity) for op in self._operands])
-    
-    def description(self) -> List:
-        return ["+"] + [op.description() for op in self._operands]
 
 class Product(GameStateVariable):
     def __init__(self, *operands):
@@ -129,10 +166,6 @@ class Product(GameStateVariable):
     
     def value(self, realm, entity):
         return prod([op.value(realm, entity) for op in self._operands])
-
-    def description(self) -> List:
-        return ["x"] + [op.description() for op in self._operands]
-
 class Modulus(GameStateVariable):
     def __init__(self, a: GameStateVariable, b: GameStateVariable):
         super().__init__()
@@ -153,9 +186,6 @@ class Max(GameStateVariable):
     def value(self, realm, entity):
         return max([op.value(realm, entity) for op in self._operands])
 
-    def description(self) -> List:
-        return ["max"] + [op.description() for op in self._operands]
-
 class Min(GameStateVariable):
     def __init__(self, *operands):
         super().__init__()
@@ -163,9 +193,6 @@ class Min(GameStateVariable):
     
     def value(self, realm, entity):
         return min([op.value(realm, entity) for op in self._operands])
-
-    def description(self) -> List:
-        return ["min"] + [op.description() for op in self._operands]
 
 ###############################################################
 
@@ -262,10 +289,8 @@ class InflictDamage(TargetGameStateVariable):
             realm.entity(a).history.damage_inflicted for a in self._target.agents()
         ])
 
-    def description(self) -> List:
-        return super().description() + [self._damage_type]
 
-class EquipLevel(TargetGameStateVariable):
+class EquipmentLevel(TargetGameStateVariable):
     '''
     Returns maximum level of 'equipment' equipped on target, default 0
     '''

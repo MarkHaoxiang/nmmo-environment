@@ -48,14 +48,6 @@ class TestTasks(unittest.TestCase):
       team_helper = task.TeamHelper(range(1, 101), 5)
       task.Defend(team_helper.own_team(17),50)
 
-    def test_descriptions(self):
-      self.assertEqual(
-        task.AND(Success(), 
-        task.NOT(task.OR(Success(), 
-                         TestTask(task.EntityTarget("t1", []), 123, 3.45)))).description(),
-        ['AND', 'Success', ['NOT', ['OR', 'Success', 'TestTask']]]
-      )
-
     def test_team_helper(self):
       team_helper = task.TeamHelper(range(1, 101), 5)
  

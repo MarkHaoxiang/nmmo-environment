@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, TypedDict
 import json
 
 '''
@@ -28,6 +28,10 @@ class Task(ABC):
       Numeric data obtained from the game state, or an operator combining values.
   '''
 
+  def __init__(self, *args, **kwargs):
+    self._args : List = args
+    self._kwargs : Dict = kwargs
+
   @abstractmethod
   def evaluate(self, realm, entity) -> bool:
     '''
@@ -35,10 +39,22 @@ class Task(ABC):
     '''
     raise NotImplementedError
 
-  def description(self) -> List:
-    return self.__class__.__name__
+  class SerializedTask(TypedDict):
+    name: str
+    args: List
+    kwargs: Dict
 
-  def to_string(self) -> str:
+  def description(self) -> SerializedTask:
+    '''
+    Partially serializes a task - protects against breaking the sandbox by overloading "evaluate"
+    '''
+    return {
+      "name": self.__class__.__name__,
+      "args": [lambda arg : (arg.description(),"subnode") if ("evaluate" in dir(arg) or "value" in dir(arg)) else (arg,"param") for arg in self._args],
+      "kwargs": {k: (v.description(),"subnode") if "evaluate" in dir(v) or "value" in dir(v) else (v,"param") for k,v in self._kwargs.items()}
+    }
+
+  def __str__(self) -> str:
     return json.dumps(self.description())
 
   def __and__(self, other):
@@ -47,22 +63,18 @@ class Task(ABC):
     return OR(self,other)
   def __invert__(self):
     return NOT(self)
+  def __rshift__(self,other):
+    return IMPLY(self,other)
 
 ###############################################################
 
 class TRUE(Task):
   def evaluate(self, realm, entity) -> bool:
     return True
-  
-  def description(self) -> List:
-    return ['SUCCESS']
 
 class FALSE(Task):
   def evaluate(self, realm, entity) -> bool:
     return True
-  
-  def description(self) -> List:
-    return ['FAILURE']
 
 class AND(Task):
   def __init__(self, *tasks: Task) -> None:
@@ -72,10 +84,6 @@ class AND(Task):
 
   def evaluate(self, realm, entity) -> bool:
     return all([t.evaluate(realm, entity) for t in self._tasks])
-
-  def description(self) -> List:
-    return ["AND"] + [t.description() for t in self._tasks]
-
 class OR(Task):
   def __init__(self, *tasks: Task) -> None:
     super().__init__()
@@ -85,9 +93,6 @@ class OR(Task):
   def evaluate(self, realm, entity) -> bool:
     return any([t.evaluate(realm, entity) for t in self._tasks])
 
-  def description(self) -> List:
-    return ["OR"] + [t.description() for t in self._tasks]
-
 class NOT(Task):
   def __init__(self, task: Task) -> None:
     super().__init__()
@@ -95,9 +100,6 @@ class NOT(Task):
 
   def evaluate(self, realm, entity) -> bool:
     return not self._task.evaluate(realm, entity)
-
-  def description(self) -> List:
-    return ["NOT"] +  [self._task.description()] 
 
 class IMPLY(Task):
   def __init__(self, p: Task, q: Task) -> None:
@@ -109,9 +111,6 @@ class IMPLY(Task):
     if self._p.evaluate(realm, entity) and not self._q.evaluate(realm, entity): 
       return False
     return True
-  
-  def description(self) -> List:
-    return ["IF"] + [self._p.description()] + ["THEN"] + [self._q.description()]
 
 ###############################################################
 # Comparison
@@ -128,18 +127,12 @@ class LT(Comparison):
   def evaluate(self, realm, entity) -> bool:
     return self._lhs.value(realm,entity) < self._rhs.value(realm,entity)
 
-  def description(self) -> List:
-    return ['Less than'] + self._lhs.description() + self._rhs.description()
-
 class LE(Comparison):
   def __init__(self, lhs ,rhs) -> None:
     super().__init__(lhs,rhs)
 
   def evaluate(self, realm, entity) -> bool:
     return self._lhs.value(realm,entity) <= self._rhs.value(realm,entity)
-
-  def description(self) -> List:
-    return ['Less than or equal'] + self._lhs.description() + self._rhs.description()
 
 class EQ(Comparison):
   def __init__(self, lhs ,rhs) -> None:
@@ -148,9 +141,6 @@ class EQ(Comparison):
   def evaluate(self, realm, entity) -> bool:
     return self._lhs.value(realm,entity) == self._rhs.value(realm,entity)
 
-  def description(self) -> List:
-    return ['Equal'] + self._lhs.description() + self._rhs.description()
-
 class NE(Comparison):
   def __init__(self, lhs ,rhs) -> None:
     super().__init__(lhs,rhs)
@@ -158,18 +148,12 @@ class NE(Comparison):
   def evaluate(self, realm, entity) -> bool:
     return self._lhs.value(realm,entity) != self._rhs.value(realm,entity)
 
-  def description(self) -> List:
-    return ['Not equal'] + self._lhs.description() + self._rhs.description()
-
 class GT(Comparison):
   def __init__(self, lhs ,rhs) -> None:
     super().__init__(lhs,rhs)
 
   def evaluate(self, realm, entity) -> bool:
     return self._lhs.value(realm,entity) > self._rhs.value(realm,entity)
-
-  def description(self) -> List:
-    return ['Greater'] + self._lhs.description() + self._rhs.description()
   
 
 class GE(Comparison):
@@ -178,9 +162,6 @@ class GE(Comparison):
 
   def evaluate(self, realm, entity) -> bool:
       return self._lhs.value(realm,entity) >= self._rhs.value(realm,entity)
-
-  def description(self) -> List:
-      return ['Greater than or equal'] + self._lhs.description() + self._rhs.description()
 
 
   

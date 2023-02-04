@@ -21,9 +21,6 @@ class Attack(Task):
   def evaluate(self, realm, entity) -> bool:
     return self._task.evaluate(realm,entity)
 
-  def description(self) -> List:
-    return ["Attack"] + self._target.description() + [str(self._damage_type), str(self._quantity)]
-
 class Eliminate(Task):
   def __init__(self, target: EntityTarget, num_steps: int) -> None:
     super().__init__()
@@ -33,9 +30,6 @@ class Eliminate(Task):
 
   def evaluate(self, realm, entity) -> bool:
     return self._task.evaluate(realm,entity)
-
-  def description(self) -> List:
-    return ["Eliminate"] + self._target.description() + ['for', str(self._num_steps)]
   
 
 class Defend(Task):
@@ -48,9 +42,6 @@ class Defend(Task):
   def evaluate(self, realm, entity) -> bool:
     return self._task.evaluate(realm,entity)
 
-  def description(self) -> List:
-    return ["Defend"] + self._target.description() + ['for', str(self._num_steps)]
-
 class Hoard(Task):
   def __init__(self, target: EntityTarget, gold: int) -> None: 
     super().__init__()
@@ -60,9 +51,6 @@ class Hoard(Task):
   
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
-
-  def description(self) -> List:
-    return ["Hoard"] + self._target.description() + [str(self.gold)]
 
 class Achieve(Task):
   def __init__(self,target: EntityTarget, skill, level) -> None:
@@ -78,9 +66,6 @@ class Achieve(Task):
   
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
-  
-  def description(self) -> List:
-    return self._target.description ["achieve", self._level, self._skill.__name__]
 
 class Harvest(Task):
   def __init__(self, target: EntityTarget, resource, level, amount: int) -> None: 
@@ -93,9 +78,6 @@ class Harvest(Task):
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
 
-  def description(self) -> List:
-    return ["Harvest"] + self._target.description() + [self._resource.__name__, self._level, self._amount]
-
 class Assemble(Task):
   def __init__(self, target: EntityTarget, num_agents, distance=5) -> None:
     super().__init__()
@@ -104,9 +86,6 @@ class Assemble(Task):
   
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
-
-  def description(self) -> List:
-    return ["Assemble"] + self._target.description() + [str(self._num_agents)]
 
 class Spread(Task):
   def __init__(self, target: EntityTarget, distance) -> None:
@@ -117,18 +96,12 @@ class Spread(Task):
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
 
-  def description(self) -> List:
-    return ["Spread"] + self._target.description() + [self._distance]
-
 class Equip(Task):
   def __init__(self, target: EntityTarget, equipment, level) -> None:
     super().__init__()
-    self._task = Equip(target, equipment) > level
+    self._task = EquipmentLevel(target, equipment) > level
     self._equipment = equipment
     self._level = level
   
   def evaluate(self, realm, entity):
     return self._task.evaluate(realm,entity)
-
-  def description(self) -> List:
-    return ["Equip"] + self._target.description() + [self._level,"level",self._equipment.__name__]
