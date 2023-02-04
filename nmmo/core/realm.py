@@ -39,6 +39,7 @@ class Realm:
     Action.hook(config)
 
     # Generate maps if they do not exist
+    self.rng = np.random.default_rng()
     config.MAP_GENERATOR(config).generate_all_maps()
 
     self.datastore = NumpyDatastore()
@@ -72,7 +73,8 @@ class Realm:
         idx: Map index to load
     """
     self.log_helper.reset()
-    self.map.reset(map_id or np.random.randint(self.config.MAP_N) + 1)
+    self.map.reset(map_id or self.rng.integers(self.config.MAP_N) + 1)
+    self.rng = np.random.default_rng(map_id)
     self.players.reset()
     self.npcs.reset()
     self.players.spawn()
@@ -138,9 +140,7 @@ class Realm:
 
     # Execute actions
     for priority in sorted(merged):
-      # TODO: we should be randomizing these, otherwise the lower ID agents
-      # will always go first.
-      ent_id, (atn, args) = merged[priority][0]
+      self.rng.shuffle(merged[priority])
       for ent_id, (atn, args) in merged[priority]:
         ent = self.entity(ent_id)
         atn.call(self, ent, *args)
