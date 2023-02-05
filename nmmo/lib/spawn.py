@@ -10,6 +10,9 @@ class SequentialLoader:
     self.items = items
     self.idx   = -1
 
+  def __len__(self):
+    return len(self.items)
+
   def __iter__(self):
     return self
 
@@ -28,6 +31,9 @@ class TeamLoader:
 
     self.items = items
     self.idx   = -1
+
+  def __len__(self):
+    return len(self.items)
 
   def __iter__(self):
     return self
