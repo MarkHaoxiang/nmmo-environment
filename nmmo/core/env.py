@@ -379,7 +379,7 @@ class Env(ParallelEnv):
     for agent_id in agents:
       infos[agent_id] = {}
       agent = self.realm.players.get(agent_id)
-      
+
       infos[agent_id] =  {'population': agent.population}
 
       if agent is None:
@@ -414,7 +414,7 @@ class TaskEnv(Env):
 
     # assign the task_set for each player
     for agent in self.realm.players.values():
-      agent.task = task.generate()
+      agent.task = task.generate(agent)
 
     return result
 

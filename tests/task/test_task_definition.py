@@ -3,8 +3,6 @@ import unittest
 from nmmo.lib.task import  GameStateGenerator, Task, TRUE, FALSE, AND, OR
 import nmmo
 from scripted.baselines import Sleeper
-
-
 class TestTaskDefinitions(unittest.TestCase):
 
     def test_predicate_combination_task(self):
@@ -25,6 +23,7 @@ class TestTaskDefinitions(unittest.TestCase):
         
         self.assertEqual(game_state.agent.health,config.PLAYER_BASE_HEALTH)
         self.assertNotEqual(game_state.team[0].position, game_state.opponents[1][0].position)
+
 
 if __name__ == '__main__':
   unittest.main()

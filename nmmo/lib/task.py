@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-import copy
+import copy, math
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -60,31 +60,37 @@ class GameStateGenerator:
       team = self.teams[tid], 
       opponents = self.teams)
 
-'''
-Pass in an instance of Task to the Env to define the rewards of a environment.
-Each Task is assumed to be across entity
-'''
+# Core API
 class Task:
+  '''Basic reward block
 
+  Pass in an instance of Task to the Env to define the rewards of a environment.
+  Each Task is assumed to be across entity
+  '''
   def reward(self, gs: GameState) -> float:
     return 0
 
-  def generate(self):
+  def generate(self, agent):
     return copy.deepcopy(self)
 
   def __str__(self):
     return self.__class__.__name__
 
-'''
-A mapping from GameState to true/false
-'''
+# Predicate tasks
 class PredicateTask(Task):
-  def __init__(self, reward = 1, discount_factor = 0):
+  '''
+  A boolean valued task
+  '''
+  def __init__(self, reward = 1, discount_factor = 0, maximum_completion=math.inf):
+    super().__init__()
     self._discount_factor = discount_factor
     self._completion_count = 0 
     self._reward = reward
+    self._maximum_completion = maximum_completion
 
   def reward(self, gs: GameState) -> float:
+    if self._maximum_completion < self._completion_count:
+        return 0
     if self.evaluate(gs):
       self._completion_count += 1
       return self._reward * self._discount_factor ** (self._completion_count-1)
@@ -101,22 +107,34 @@ class PredicateTask(Task):
     return NOT(self)
   def __rshift__(self,other):
     return IMPLY(self,other)
-
-# Baselines
-
+    
 class ONCE(PredicateTask):
-  def __init__(self, reward = 1):
+  def __init__(self, task: PredicateTask, reward = 1):
     super().__init__(reward=reward, discount_factor=0)
+    self._task = task
+  
+  def evaluate(self, gs: GameState) -> bool:
+    return self._task.evaluate(gs)
 
 class REPEAT(PredicateTask):
-  def __init__(self, reward = 1):
-    super().__init__(reward=reward, discount_factor=1)
+  def __init__(self, task: PredicateTask, reward = 1):
+    super().__init__(reward=reward, discount_factor=0)
+    self._task = task
+
+  def evaluate(self, gs: GameState) -> bool:
+    return self._task.evaluate(gs)
 
 class TRUE(PredicateTask):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    
   def evaluate(self, gs) -> bool:
     return True
 
 class FALSE(PredicateTask):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
   def evaluate(self, gs) -> bool:
     return False
 
@@ -138,15 +156,16 @@ class OR(PredicateTask):
     return any([t.evaluate(gs) for t in self._tasks])
 
 class NOT(PredicateTask):
-  def __init__(self, task: PredicateTask) -> None:
+  def __init__(self, task: PredicateTask, *args, **kwargs) -> None:
+    super().__init__(*args,**kwargs)
     self._task = task
 
   def evaluate(self, gs) -> bool:
     return not self._task.evaluate(gs)
 
 class IMPLY(PredicateTask):
-  def __init__(self, p: PredicateTask, q: PredicateTask) -> None:
-    super().__init__()
+  def __init__(self, p: PredicateTask, q: PredicateTask, *args, **kwargs) -> None:
+    super().__init__(*args, **kwargs)
     self._p = p
     self._q = q
   
@@ -154,3 +173,23 @@ class IMPLY(PredicateTask):
     if self._p.evaluate(gs) and not self._q.evaluate(gs): 
       return False
     return True
+
+
+# TeamTask
+def team_task(task_class):
+  '''Decorate a task to share state across a team
+  '''
+  class TeamTask(task_class):
+    def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+      self._args = args
+      self._kwargs = kwargs
+      self._team2task = {}
+
+    def generate(self, agent):
+      tid = agent.population_id.val
+      if not tid in self._team2task:
+        self._team2task[tid] = TeamTask(*self._args,**self._kwargs)
+      return self._team2task[tid]
+
+  return TeamTask

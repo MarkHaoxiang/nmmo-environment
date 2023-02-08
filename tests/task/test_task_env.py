@@ -3,10 +3,11 @@ import numpy as np
 
 import nmmo
 from nmmo.core.env import TaskEnv
-from nmmo.lib import task
+import nmmo.lib.task as task
+from nmmo.lib.task import team_task
 from scripted.baselines import Sleeper, Random
 
-# Example Task
+# Example Tasks
 class TravelTask(task.PredicateTask):
 
   def __init__(self, minimum_distance = 10):
@@ -24,6 +25,10 @@ class TravelTask(task.PredicateTask):
     if self.distance_squared_to(gs.agent.position) > self.minimum_distance:
       return True
     return False
+
+@team_task
+class ExampleTeamTask(task.TRUE):
+  pass
 
 class TestTasks(unittest.TestCase):
 
@@ -51,13 +56,32 @@ class TestTasks(unittest.TestCase):
     TICKS = 50
     config = nmmo.config.Default()
     config.PLAYERS = [Random, Random]
-
     env = TaskEnv(config)
 
     r0 = self._reset_with_task_and_run(env=env, task=TravelTask(minimum_distance=1), ticks=TICKS)
     r1 = self._reset_with_task_and_run(env=env, task=TravelTask(minimum_distance=2501), ticks=TICKS)
     self.assertGreater(r0,0)
     self.assertEqual(r1,0)
+
+  def test_team_task_state(self):
+    #TODO(mark) Change test to not rely on order
+    config = nmmo.config.Default()
+    config.PLAYERS = [Sleeper, Sleeper]
+    env = TaskEnv(config)
+    
+    task = ExampleTeamTask(discount_factor=2)
+    env.reset(task) 
+
+    tid2eids = {}
+    for player in env.realm.players.values():
+      tid = player.population_id.val
+      if not tid in tid2eids:
+        tid2eids[tid] = []
+      tid2eids[tid].append(player.ent_id)
+
+    _, rewards, _, _ = env.step({})
+    self.assertGreater(rewards[tid2eids[0][1]],rewards[tid2eids[0][0]])
+    self.assertEqual(rewards[tid2eids[0][1]],rewards[tid2eids[1][1]])
 
 if __name__ == '__main__':
   unittest.main()
