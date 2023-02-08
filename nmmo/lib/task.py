@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
-import copy, math
+import copy
+import math
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -31,15 +32,16 @@ class GameState:
   tick: int
   agent: AgentVariable
   team: List[AgentVariable]
-  opponents: List[List[AgentVariable]] 
+  opponents: List[List[AgentVariable]]
 
 class GameStateGenerator:
   def __init__(self, realm: Realm, config: Config):
     # Entity
     self.agents: Dict[int, AgentVariable] = {}
     for agent in realm.players.values():
-      self.agents[agent.ent_id] = AgentVariable(agent.resources.health.val, (agent.row.val, agent.col.val))
-      
+      self.agents[agent.ent_id] = AgentVariable(
+        agent.resources.health.val, (agent.row.val, agent.col.val))
+
     # Team
     self.eid2tid={}
     self.teams: Dict[int, List[List[AgentVariable]]] = {}
@@ -51,13 +53,13 @@ class GameStateGenerator:
 
     # Global variable
     self.tick = realm.tick
-    
+
   def generate(self, eid: int) -> GameState:
     tid = self.eid2tid[eid]
     return GameState(
-      tick = self.tick, 
-      agent = self.agents[eid], 
-      team = self.teams[tid], 
+      tick = self.tick,
+      agent = self.agents[eid],
+      team = self.teams[tid],
       opponents = self.teams)
 
 # Core API
@@ -92,13 +94,13 @@ class PredicateTask(Task):
   def __init__(self, reward = 1, discount_factor = 0, maximum_completion=math.inf):
     super().__init__()
     self._discount_factor = discount_factor
-    self._completion_count = 0 
+    self._completion_count = 0
     self._reward = reward
     self._maximum_completion = maximum_completion
 
   def reward(self, gs: GameState) -> float:
     if self._maximum_completion < self._completion_count:
-        return 0
+      return 0
     if self.evaluate(gs):
       self._completion_count += 1
       return self._reward * self._discount_factor ** (self._completion_count-1)
@@ -115,12 +117,12 @@ class PredicateTask(Task):
     return NOT(self)
   def __rshift__(self,other):
     return IMPLY(self,other)
-    
+
 class ONCE(PredicateTask):
   def __init__(self, task: PredicateTask, reward = 1):
     super().__init__(reward=reward, discount_factor=0)
     self._task = task
-  
+
   def evaluate(self, gs: GameState) -> bool:
     return self._task.evaluate(gs)
 
@@ -135,7 +137,7 @@ class REPEAT(PredicateTask):
 class TRUE(PredicateTask):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    
+
   def evaluate(self, gs) -> bool:
     return True
 
@@ -149,7 +151,7 @@ class FALSE(PredicateTask):
 class AND(PredicateTask):
   def __init__(self, *tasks: PredicateTask) -> None:
     super().__init__()
-    assert len(tasks)
+    assert len(tasks) > 0
     self._tasks = tasks
 
   def evaluate(self, gs) -> bool:
@@ -157,7 +159,7 @@ class AND(PredicateTask):
 class OR(PredicateTask):
   def __init__(self, *tasks: PredicateTask) -> None:
     super().__init__()
-    assert len(tasks)
+    assert len(tasks) > 0
     self._tasks = tasks
 
   def evaluate(self, gs) -> bool:
@@ -176,9 +178,9 @@ class IMPLY(PredicateTask):
     super().__init__(*args, **kwargs)
     self._p = p
     self._q = q
-  
+
   def evaluate(self, gs) -> bool:
-    if self._p.evaluate(gs) and not self._q.evaluate(gs): 
+    if self._p.evaluate(gs) and not self._q.evaluate(gs):
       return False
     return True
 
@@ -210,8 +212,6 @@ def global_task(task_class):
   Example: EarlyMoverAdvantage task. Global task with discount factor < 1
   '''
   class GlobalTask(task_class):
-    def __init__(self, *args, **kwargs):
-      super().__init__(*args, **kwargs)
 
     def generate(self, agent):
       return self

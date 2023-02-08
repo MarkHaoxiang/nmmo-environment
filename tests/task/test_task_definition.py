@@ -20,7 +20,7 @@ class TestTaskDefinitions(unittest.TestCase):
 
         generator = GameStateGenerator(env.realm,config)
         game_state = generator.generate([v for v in env.realm.players.values()][0].ent_id)
-        
+
         self.assertEqual(game_state.agent.health,config.PLAYER_BASE_HEALTH)
         self.assertNotEqual(game_state.team[0].position, game_state.opponents[1][0].position)
 
