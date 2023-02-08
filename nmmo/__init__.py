@@ -7,7 +7,6 @@ from .io.action import Action
 from .core import config, agent
 from .core.agent import Agent
 from .core.env import Env
-from .systems.achievement import Task
 from .core.terrain import MapGenerator, Terrain
 
 MOTD = rf'''      ___           ___           ___           ___

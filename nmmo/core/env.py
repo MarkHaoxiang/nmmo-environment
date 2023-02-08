@@ -379,19 +379,13 @@ class Env(ParallelEnv):
     for agent_id in agents:
       infos[agent_id] = {}
       agent = self.realm.players.get(agent_id)
+      
+      infos[agent_id] =  {'population': agent.population}
 
       if agent is None:
         rewards[agent_id] = -1
-        continue
-
-      infos[agent_id] =  {'population': agent.population}
-
-      if agent.diary is None:
+      else:
         rewards[agent_id] = 0
-        continue
-
-      rewards[agent_id] = sum(agent.diary.rewards.values())
-      infos[agent_id].update(agent.diary.rewards)
 
     return rewards, infos
 
