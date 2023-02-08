@@ -1,5 +1,4 @@
 from __future__ import annotations
-import abc
 from dataclasses import dataclass
 import copy
 
@@ -22,31 +21,6 @@ Layer between realm and rewards, releasing a subset of preselected variables and
 3. Pass GameState through Task to obtain reward
 '''
 
-class TeamHelper():
-  def __init__(self, agents: List[int], num_teams: int) -> None:
-    assert len(agents) % num_teams == 0
-    self.team_size = len(agents) // num_teams
-    self._teams = [
-      list(agents[i * self.team_size : (i+1) * self.team_size])
-      for i in range(num_teams)
-    ]
-    self._agent_to_team = {a: tid for tid, t in enumerate(self._teams) for a in t}
-
-  def own_team(self, agent_id: int):
-    return self._teams[self._agent_to_team[agent_id]]
-
-  def left_team(self, agent_id: int):
-    return self._teams[(self._agent_to_team[agent_id] -1) % len(self._teams)]
-
-  def right_team(self, agent_id: int):
-    return self._teams[(self._agent_to_team[agent_id] + 1) % len(self._teams)]
-
-  def all_agents(self):
-    return self._agent_to_team.keys()
-  
-  def all_teams(self):
-    return list(set(self._agent_to_team.values()))
-
 @dataclass
 class AgentVariable:
   health: int
@@ -61,31 +35,30 @@ class GameState:
 
 class GameStateGenerator:
   def __init__(self, realm: Realm, config: Config):
+    # Entity
+    self.agents: Dict[int, AgentVariable] = {}
+    for agent in realm.players.values():
+      self.agents[agent.ent_id] = AgentVariable(agent.resources.health.val, (agent.row.val, agent.col.val))
+      
+    # Team
+    self.eid2tid={}
+    self.teams: Dict[int, List[List[AgentVariable]]] = {}
+    for agent in realm.players.values():
+      self.eid2tid[agent.ent_id] = agent.population_id.val
+      self.teams[agent.population_id.val] = []
+    for agent in realm.players.values():
+      self.teams[agent.population_id.val].append(self.agents[agent.ent_id])
 
     # Global variable
     self.tick = realm.tick
-
-    # Entity Specific
-    self.team_helper = TeamHelper([agent.ent_id for agent in realm.players.values()], config.PLAYER_N // config.PLAYER_TEAM_SIZE)
-
-    self.agents: Dict[int, AgentVariable] = {}
-    for agent in realm.players.values():
-      self.agents[agent.ent_id] = AgentVariable(agent.resources.health.val, (agent.row, agent.col))
-
-    self.teams: Dict[int, List[List[AgentVariable]]] = {}
-    for tid in self.team_helper.all_teams():
-      self.teams[tid] = []
-    for eid, agent_variable in self.agents.items():
-      self.teams[self.team_helper._agent_to_team[eid]].append(agent_variable)
     
   def generate(self, eid: int) -> GameState:
-    all_teams = copy.deepcopy(self.teams)
-    tid = self.team_helper._agent_to_team[eid]
+    tid = self.eid2tid[eid]
     return GameState(
       tick = self.tick, 
-      agent = copy.deepcopy(self.agents[eid]), 
-      team = all_teams.pop(tid), 
-      opponents = all_teams)
+      agent = self.agents[eid], 
+      team = self.teams[tid], 
+      opponents = self.teams)
 
 '''
 Pass in an instance of Task to the Env to define the rewards of a environment.
@@ -95,6 +68,12 @@ class Task:
 
   def reward(self, gs: GameState) -> float:
     return 0
+
+  def generate(self):
+    return copy.deepcopy(self)
+
+  def __str__(self):
+    return self.__class__.__name__
 
 '''
 A mapping from GameState to true/false

@@ -1,9 +1,12 @@
-
+from __future__ import annotations
 
 from nmmo.systems.skill import Skills
-from nmmo.systems.achievement import Diary
 from nmmo.systems import combat
 from nmmo.entity import entity
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from nmmo.lib.task import Task
 
 # pylint: disable=no-member
 class Player(entity.Entity):
@@ -28,11 +31,7 @@ class Player(entity.Entity):
 
     # Submodules
     self.skills = Skills(realm, self)
-
-    self.diary  = None
-    tasks = realm.config.TASKS
-    if tasks:
-      self.diary = Diary(self, tasks)
+    self.task: Task = None
 
   @property
   def serial(self):
@@ -130,6 +129,3 @@ class Player(entity.Entity):
 
     self.resources.update()
     self.skills.update()
-
-    if self.diary:
-      self.diary.update(realm)

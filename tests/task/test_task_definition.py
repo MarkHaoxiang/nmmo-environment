@@ -25,7 +25,6 @@ class TestTaskDefinitions(unittest.TestCase):
         
         self.assertEqual(game_state.agent.health,config.PLAYER_BASE_HEALTH)
         self.assertNotEqual(game_state.team[0].position, game_state.opponents[1][0].position)
-        
 
 if __name__ == '__main__':
   unittest.main()

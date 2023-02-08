@@ -14,6 +14,7 @@ from nmmo.entity.entity import Entity
 from nmmo.systems.item import Item
 from nmmo.core import realm
 from scripted.baselines import Scripted
+from nmmo.lib.task import Task, GameStateGenerator
 
 
 class Env(ParallelEnv):
@@ -102,14 +103,13 @@ class Env(ParallelEnv):
 
   # TODO: This doesn't conform to the PettingZoo API
   # pylint: disable=arguments-renamed
-  def reset(self, map_id=None, seed=None, options=None):
+  def reset(self, map_id: int=None, seed: int=None, options=None):
     '''OpenAI Gym API reset function
 
     Loads a new game map and returns initial observations
 
     Args:
         idx: Map index to load. Selects a random map by default
-
 
     Returns:
         observations, as documented by _compute_observations()
@@ -395,26 +395,78 @@ class Env(ParallelEnv):
 
     return rewards, infos
 
+class TaskEnv(Env):
+  '''
+  Environment wrapper calculating rewards through Tasks
+  '''
 
-  ############################################################################
-  # PettingZoo API
-  ############################################################################
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
 
-  def render(self, mode='human'):
-    '''For conformity with the PettingZoo API only; rendering is external'''
+  def reset(self, task: Task, map_id:int=None, seed=None, options=None):
+    """OpenAI Gym API reset function
 
-  @property
-  def agents(self) -> List[AgentID]:
-    '''For conformity with the PettingZoo API only; rendering is external'''
-    return list(self.realm.players.keys())
+    Loads a new game map and returns initial observations
+    Currently, assigns the same task set to all agents
 
-  def close(self):
-    '''For conformity with the PettingZoo API only; rendering is external'''
+    Args:
+        task: A SINGLE task to assign to all agents.
+        map_id: Map index to load. Selects a random map by default
 
-  def seed(self, seed=None):
-    return self._init_random(seed)
+    Returns:
+        observations, as documented by _compute_observations()
+    """
+    result = super().reset(map_id=map_id, seed=seed, options=options)
 
-  def state(self) -> np.ndarray:
-    raise NotImplementedError
+    # assign the task_set for each player
+    for agent in self.realm.players.values():
+      agent.task = task.generate()
 
-  metadata = {'render.modes': ['human'], 'name': 'neural-mmo'}
+    return result
+
+  def _compute_rewards(self, agents: List[AgentID] = None):
+    infos = {}
+    rewards = {}
+
+    generator = GameStateGenerator(self.realm,self.config)
+
+    for agent_id in agents:
+      agent = self.realm.players.get(agent_id)
+
+      if agent is None:
+        rewards[agent_id] = -1
+        continue
+
+      reward = agent.task.reward(generator.generate(agent_id))
+      rewards[agent_id] = reward
+
+      # TODO(mark) task specific info
+      infos[agent_id] = {}
+      infos[agent_id] =  {'population': agent.population}
+      infos[agent_id].update({str(agent.task): reward})
+
+    return rewards, infos
+
+
+############################################################################
+# PettingZoo API
+############################################################################
+
+def render(self, mode='human'):
+  '''For conformity with the PettingZoo API only; rendering is external'''
+
+@property
+def agents(self) -> List[AgentID]:
+  '''For conformity with the PettingZoo API only; rendering is external'''
+  return list(self.realm.players.keys())
+
+def close(self):
+  '''For conformity with the PettingZoo API only; rendering is external'''
+
+def seed(self, seed=None):
+  return self._init_random(seed)
+
+def state(self) -> np.ndarray:
+  raise NotImplementedError
+
+metadata = {'render.modes': ['human'], 'name': 'neural-mmo'}
