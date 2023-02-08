@@ -76,6 +76,14 @@ class Task:
   def __str__(self):
     return self.__class__.__name__
 
+class MultiTask(Task):
+  def __init__(self,*tasks) -> None:
+    super().__init__()
+    self._tasks = tasks
+
+  def reward(self,gs):
+    return sum([task.reward(gs) for task in self._tasks])
+
 # Predicate tasks
 class PredicateTask(Task):
   '''
@@ -175,9 +183,11 @@ class IMPLY(PredicateTask):
     return True
 
 
-# TeamTask
+# State Sharing
 def team_task(task_class):
   '''Decorate a task to share state across a team
+
+  Example: Across a team, can only complete task < "limit" times.
   '''
   class TeamTask(task_class):
     def __init__(self, *args, **kwargs):
@@ -193,3 +203,17 @@ def team_task(task_class):
       return self._team2task[tid]
 
   return TeamTask
+
+def global_task(task_class):
+  '''Decorate a task to share state globally
+
+  Example: EarlyMoverAdvantage task. Global task with discount factor < 1
+  '''
+  class GlobalTask(task_class):
+    def __init__(self, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+
+    def generate(self, agent):
+      return self
+
+  return GlobalTask
